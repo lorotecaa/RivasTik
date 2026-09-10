@@ -1,0 +1,16 @@
+{
+  "name": "tiktok-server",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "socket.io": "^4.8.1",
+    "tiktok-live-connector": "^2.1.0",
+    "ws": "^8.18.3"
+  }
+}

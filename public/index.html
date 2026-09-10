@@ -1,0 +1,93 @@
+// ===============================
+// 📦 SERVIDOR DE SUBASTA TIKTOK LIVE (RENDER)
+// ===============================
+
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const path = require("path");
+require("dotenv").config();
+
+const app = express();
+app.use(cors());
+
+// Servir archivos estáticos desde la carpeta 'public' (si deseas desplegar vistas web)
+app.use(express.static(path.join(__dirname, "public")));
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+const PORT = process.env.PORT || 10000;
+
+io.on("connection", (socket) => {
+    console.log(`🟢 Cliente conectado: ${socket.id}`);
+
+    // Unirse a la sala específica del streamer
+    socket.on("join_room", (data) => {
+        const streamerId = data?.streamerId?.replace("@", "");
+        if (!streamerId) return;
+        
+        socket.join(streamerId);
+        console.log(`📡 Cliente unido a sala: ${streamerId}`);
+    });
+
+    // Iniciar subasta
+    socket.on("iniciar_subasta", (data) => {
+        console.log("🚀 Subasta iniciada desde el Dashboard.");
+        io.emit("subasta_iniciada", data);
+    });
+
+    // Sincronización de tiempo del temporizador
+    socket.on("sync_time", (time) => {
+        socket.broadcast.emit("update_time", time);
+    });
+
+    // Finalizar tiempo regular / iniciar snipe
+    socket.on("finalizar_subasta", () => {
+        console.log("⏹️ Evento de finalización de subasta recibido.");
+        io.emit("finalizar_subasta");
+    });
+
+    // Activar alerta visual de snipe en widgets
+    socket.on("activar_alerta_snipe_visual", () => {
+        console.log("⚡ Alerta visual de Snipe activada.");
+        io.emit("activar_alerta_snipe_visual");
+    });
+
+    // Anunciar ganador de la ronda
+    socket.on("anunciar_ganador", (ganador) => {
+        console.log("🏆 Anunciando ganador:", ganador);
+        io.emit("anunciar_ganador", ganador);
+    });
+
+    // Limpiar listas de participantes
+    socket.on("limpiar_listas", () => {
+        console.log("🧹 Limpiando listas de participantes en clientes.");
+        io.emit("limpiar_listas_clientes");
+    });
+
+    // Recibir regalo desde el Dashboard (TikFinity) y reenviarlo a todos los clientes/widgets
+    socket.on("nuevo_regalo", (gift) => {
+        console.log(`💎 Regalo recibido de [${gift.usuario}]: ${gift.cantidad} 💎 (${gift.regalo})`);
+        io.emit("new_gift", gift);
+    });
+
+    // Sincronización general de participantes
+    socket.on("sync_participantes", (participantes) => {
+        socket.broadcast.emit("sync_participantes", participantes);
+    });
+
+    socket.on("disconnect", () => {
+        console.log(`🔴 Cliente desconectado: ${socket.id}`);
+    });
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Servidor backend corriendo y listo en el puerto ${PORT}`);
+});
