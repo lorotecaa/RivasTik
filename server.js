@@ -2,12 +2,11 @@
 // 📦 SERVIDOR PRINCIPAL TIKTOK & SERVERTAP
 // ===============================
 
-// Dependencias
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
-const WebcastPushConnection = require("tiktok-live-connector");
+const { WebcastPushConnection } = require("tiktok-live-connector");
 require("dotenv").config();
 
 // ===============================
@@ -25,12 +24,12 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Ruta para el Dashboard principal
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Ruta para el Widget
 app.get("/widget", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ===============================
@@ -59,8 +58,6 @@ const highValueGiftMap = {
 
 function configurarEventosTikTok(tiktokConn, streamerId, io) {
     tiktokConn.on("gift", (data) => {
-        // Al haber quitado las subastas, procesamos los regalos directamente al recibirlos.
-
         if (data.giftType === 1 && data.repeatEnd === false) {
             return; 
         }
@@ -96,8 +93,9 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
             }
         }
 
+        // Emitir a la sala específica del streamer
         io.to(streamerId).emit("update_participantes", participantes); 
-        io.emit("new_gift", {
+        io.to(streamerId).emit("new_gift", {
             userId: userId,
             nickname: data.nickname,
             giftName: data.giftName,
@@ -107,11 +105,11 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
     });
 
     tiktokConn.on("chat", (data) => {
-        io.emit("new_chat", { user: data.uniqueId, comment: data.comment });
+        io.to(streamerId).emit("new_chat", { user: data.uniqueId, comment: data.comment });
     });
 
     tiktokConn.on("like", (data) => {
-        io.emit("new_like", { user: data.uniqueId, likeCount: data.likeCount });
+        io.to(streamerId).emit("new_like", { user: data.uniqueId, likeCount: data.likeCount });
     });
 }
 
@@ -124,11 +122,14 @@ io.on("connection", (socket) => {
   socket.on('conectar-tiktok', async (data) => {
       const username = data.user?.replace("@", "").trim();
       if (!username) {
-          io.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Usuario de TikTok inválido', diamondCount: 0 });
+          socket.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Usuario de TikTok inválido', diamondCount: 0 });
           return;
       }
 
       console.log(`🎥 Intentando conectar al Live de TikTok: @${username}`);
+
+      // 🛑 CRÍTICO: Unir el socket a la sala del streamer
+      socket.join(username);
 
       if (conexionesTikTok[username]) {
           try { conexionesTikTok[username].disconnect(); } catch(e) {}
@@ -141,19 +142,19 @@ io.on("connection", (socket) => {
       });
 
       try {
-          const state = await tiktokConn.connect();
+          await tiktokConn.connect();
           console.log(`✅ ¡Conectado con éxito al Live de @${username}!`);
           conexionesTikTok[username] = tiktokConn;
           configurarEventosTikTok(tiktokConn, username, io);
 
-          io.emit('new_gift', { 
+          io.to(username).emit('new_gift', { 
               nickname: 'SISTEMA', 
               giftName: `🟢 Conectado exitosamente al Live de @${username}`, 
               diamondCount: 0 
           });
       } catch (err) {
           console.error(`❌ Error conectando al Live de @${username}:`, err.message);
-          io.emit('new_gift', { 
+          socket.emit('new_gift', { 
               nickname: 'SISTEMA', 
               giftName: `🔴 Error: ¿@${username} está en DIRECTO ahora mismo?`, 
               diamondCount: 0 
@@ -174,7 +175,7 @@ io.on("connection", (socket) => {
               method: 'GET',
               headers: { 
                   'key': password, 
-                  'Accept': 'application/json'
+                  'Accept': 'application/json' 
               },
               signal: AbortSignal.timeout(5000)
           });
@@ -187,11 +188,9 @@ io.on("connection", (socket) => {
                   version: serverInfo.version || '1.21.1'
               });
           } else {
-              console.log(`❌ ServerTap error HTTP: ${response.status}`);
-              socket.emit('servertap-error', { message: `Error HTTP: ${response.status}. Revisa la contraseña (Auth Key).` });
+              socket.emit('servertap-error', { message: `Error HTTP: ${response.status}. Revisa la contraseña.` });
           }
       } catch (error) {
-          console.error("❌ Error de red ServerTap:", error.message);
           socket.emit('servertap-error', { message: "No se pudo alcanzar el host. Revisa la IP, puerto o firewall." });
       }
   });
