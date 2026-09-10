@@ -1,5 +1,5 @@
 // ===============================
-// 📦 SERVIDOR PRINCIPAL TIKTOK (MULTI-USUARIO)
+// 📦 SERVIDOR PRINCIPAL TIKTOK & SERVERTAP
 // ===============================
 
 // Dependencias
@@ -15,7 +15,9 @@ require("dotenv").config();
 // ===============================
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: { origin: "*" }
+});
 const PORT = process.env.PORT || 10000;
 
 // Carpeta pública
@@ -36,7 +38,6 @@ app.get("/widget", (req, res) => {
 // ===============================
 const conexionesTikTok = {}; 
 let participantes = {};
-let subastaActiva = false;
 
 // ===============================
 // 💎 MAPA DE VALORES PARA REGALOS
@@ -48,13 +49,6 @@ const normalizeGiftName = (name) => {
         .replace(/\s/g, '');
 };
 
-function calcularGanador(listaParticipantes) {
-    const participantesArray = Object.values(listaParticipantes);
-    if (participantesArray.length === 0) return null;
-    participantesArray.sort((a, b) => b.cantidad - a.cantidad);
-    return participantesArray[0];
-}
-
 const highValueGiftMap = {
     "HeartMe": 1, "Rose": 1, 
     "SelloBienvenidaPequeño": 99, "SelloBienvenida": 99, "WelcomeSealSmall": 99,
@@ -65,7 +59,7 @@ const highValueGiftMap = {
 
 function configurarEventosTikTok(tiktokConn, streamerId, io) {
     tiktokConn.on("gift", (data) => {
-        if (subastaActiva === false) return;
+        // Al haber quitado las subastas, procesamos los regalos directamente al recibirlos.
 
         if (data.giftType === 1 && data.repeatEnd === false) {
             return; 
@@ -103,20 +97,21 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
         }
 
         io.to(streamerId).emit("update_participantes", participantes); 
-        io.to(streamerId).emit("new_gift", {
+        io.emit("new_gift", {
             userId: userId,
             nickname: data.nickname,
             giftName: data.giftName,
-            diamondCount: diamantes 
+            diamondCount: diamantes,
+            avatar_url: data.profilePictureUrl || 'https://via.placeholder.com/25/555/FFFFFF?text=U'
         });
     });
 
     tiktokConn.on("chat", (data) => {
-        io.to(streamerId).emit("new_chat", { user: data.uniqueId, comment: data.comment });
+        io.emit("new_chat", { user: data.uniqueId, comment: data.comment });
     });
 
     tiktokConn.on("like", (data) => {
-        io.to(streamerId).emit("new_like", { user: data.uniqueId, likeCount: data.likeCount });
+        io.emit("new_like", { user: data.uniqueId, likeCount: data.likeCount });
     });
 }
 
@@ -124,7 +119,50 @@ io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
   // ==========================================
-  // 🔌 PRUEBA DE CONEXIÓN CON SERVERTAP (AÑADIDO)
+  // 📱 CONEXIÓN DIRECTA AL LIVE DE TIKTOK
+  // ==========================================
+  socket.on('conectar-tiktok', async (data) => {
+      const username = data.user?.replace("@", "").trim();
+      if (!username) {
+          io.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Usuario de TikTok inválido', diamondCount: 0 });
+          return;
+      }
+
+      console.log(`🎥 Intentando conectar al Live de TikTok: @${username}`);
+
+      if (conexionesTikTok[username]) {
+          try { conexionesTikTok[username].disconnect(); } catch(e) {}
+      }
+
+      const tiktokConn = new WebcastPushConnection(username, {
+          enableWebsocketUpgrade: true,
+          requestOptions: { timeout: 10000 },
+          disableEulerFallbacks: true
+      });
+
+      try {
+          const state = await tiktokConn.connect();
+          console.log(`✅ ¡Conectado con éxito al Live de @${username}!`);
+          conexionesTikTok[username] = tiktokConn;
+          configurarEventosTikTok(tiktokConn, username, io);
+
+          io.emit('new_gift', { 
+              nickname: 'SISTEMA', 
+              giftName: `🟢 Conectado exitosamente al Live de @${username}`, 
+              diamondCount: 0 
+          });
+      } catch (err) {
+          console.error(`❌ Error conectando al Live de @${username}:`, err.message);
+          io.emit('new_gift', { 
+              nickname: 'SISTEMA', 
+              giftName: `🔴 Error: ¿@${username} está en DIRECTO ahora mismo?`, 
+              diamondCount: 0 
+          });
+      }
+  });
+
+  // ==========================================
+  // 🔌 PRUEBA DE CONEXIÓN CON SERVERTAP
   // ==========================================
   socket.on('probar-servertap', async (data) => {
       const { ip, port, password } = data;
@@ -158,94 +196,21 @@ io.on("connection", (socket) => {
       }
   });
 
-  socket.on("join_room", async (data) => {
-        const streamerId = data?.streamerId?.replace("@", "");
-        if (!streamerId) return;
-
-        console.log(`📡 Cliente unido a sala: ${streamerId}`);
-        socket.join(streamerId);
-
-        if (!conexionesTikTok[streamerId]) {
-            console.log(`🎥 Conectando con TikTok Live de @${streamerId}`);
-
-            const tiktokConn = new WebcastPushConnection(streamerId, {
-                enableWebsocketUpgrade: true,
-                requestOptions: { timeout: 10000 },
-                disableEulerFallbacks: true
-            });
-
-            try {
-                await tiktokConn.connect();
-                console.log(`✅ Conectado a la transmisión de @${streamerId}`);
-            } catch (err) {
-                console.error(`❌ Error conectando con @${streamerId}:`, err);
-                socket.emit("error_conexion", { message: "No se pudo conectar al Live." });
-                return;
-            }
-
-            conexionesTikTok[streamerId] = tiktokConn;
-            configurarEventosTikTok(tiktokConn, streamerId, io);
-        }
-  });
-
-  socket.on("iniciar_subasta", (data) => {
-    participantes = {}; 
-    subastaActiva = true; 
-    console.log("🚀 Subasta iniciada y lista de participantes limpia.");
-    io.emit("update_participantes", participantes); 
-    io.emit("subasta_iniciada", data);
-  });
-
-  socket.on("sync_time", (time) => {
-    socket.broadcast.emit("update_time", time);
-  });
-
-  socket.on("reset_snipe_state_visual", () => {
-    io.emit("reset_snipe_state_visual"); 
-  });
-
-  socket.on("finalizar_subasta", () => {
-    io.emit("subasta_finalizada"); 
-  });
-
-  socket.on("subasta_terminada_total", () => {
-    subastaActiva = false; 
-    const ganador = calcularGanador(participantes);
-    if (ganador) {
-        participantes = { [ganador.userId]: ganador };
-        io.emit("anunciar_ganador", ganador); 
-        io.emit("update_participantes", participantes);
-    }
-  });
-
-  socket.on("activar_alerta_snipe_visual", () => {
-    io.emit("activar_alerta_snipe_visual");
-  });
-
-  socket.on("anunciar_ganador", (ganador) => {
-    io.emit("anunciar_ganador", ganador);
-  });
-
-  socket.on("desactivar_alerta_snipe_visual", () => {
-    io.emit("desactivar_alerta_snipe_visual"); 
-  });
-
-  socket.on("limpiar_listas", () => {
-    participantes = {}; 
-    io.emit("update_participantes", participantes); 
-  });
-
   // ==========================================
   // 🎮 SIMULADOR DE REGALOS (TEST)
   // ==========================================
   socket.on('simular-regalo', (data) => {
     const { user, amount } = data;
     io.emit("new_gift", {
-        nickname: user,
+        nickname: user || "TestUser",
         giftName: 'Regalo Simulado',
-        diamondCount: amount,
+        diamondCount: amount || 10,
         avatar_url: 'https://via.placeholder.com/25/555/FFFFFF?text=S'
     });
+  });
+
+  socket.on('disconnect', () => {
+      console.log(`🔌 Cliente desconectado: ${socket.id}`);
   });
 });
 
