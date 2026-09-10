@@ -7,13 +7,18 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// 📦 IMPORTACIÓN SEGURA (Compatible con tiktok-live-connector v2.x)
-const tiktokModule = require("tiktok-live-connector");
-const WebcastPushConnection = 
-    tiktokModule.WebcastPushConnection || 
-    tiktokModule.default?.WebcastPushConnection || 
-    tiktokModule.default || 
-    tiktokModule;
+// 📦 IMPORTACIÓN BLINDADA PARA TIKTOK-LIVE-CONNECTOR
+let WebcastPushConnection;
+try {
+    const tiktokModule = require("tiktok-live-connector");
+    WebcastPushConnection = 
+        tiktokModule.WebcastPushConnection || 
+        tiktokModule.default?.WebcastPushConnection || 
+        tiktokModule.default || 
+        tiktokModule;
+} catch (error) {
+    console.error("❌ Error al cargar tiktok-live-connector:", error.message);
+}
 
 require("dotenv").config();
 
@@ -101,7 +106,6 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
             }
         }
 
-        // Emitir a la sala específica del streamer
         io.to(streamerId).emit("update_participantes", participantes); 
         io.to(streamerId).emit("new_gift", {
             userId: userId,
@@ -125,7 +129,7 @@ io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
   // ==========================================
-  // 📱 CONEXIÓN DIRECTA AL LIVE DE TIKTOK
+  // 📱 MÓDULO 1: CONEXIÓN TIKTOK (Independiente)
   // ==========================================
   socket.on('conectar-tiktok', async (data) => {
       const username = data.user?.replace("@", "").trim();
@@ -134,9 +138,13 @@ io.on("connection", (socket) => {
           return;
       }
 
-      console.log(`🎥 Intentando conectar al Live de TikTok: @${username}`);
+      if (typeof WebcastPushConnection !== 'function') {
+          console.error("❌ WebcastPushConnection no está disponible como constructor.");
+          socket.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Error interno: Módulo TikTok no inicializado', diamondCount: 0 });
+          return;
+      }
 
-      // Unir el socket a la sala del streamer
+      console.log(`🎥 Intentando conectar al Live de TikTok: @${username}`);
       socket.join(username);
 
       if (conexionesTikTok[username]) {
@@ -171,7 +179,7 @@ io.on("connection", (socket) => {
   });
 
   // ==========================================
-  // 🔌 PRUEBA DE CONEXIÓN CON SERVERTAP
+  // 🔌 MÓDULO 2: SERVERTAP MINECRAFT (Independiente)
   // ==========================================
   socket.on('probar-servertap', async (data) => {
       const { ip, port, password } = data;
