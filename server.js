@@ -8,21 +8,29 @@ const { Server } = require("socket.io");
 const path = require("path");
 require("dotenv").config();
 
-// 📦 IMPORTACIÓN CON DEPURACIÓN Y SELECCIÓN MÚLTIPLE
+// 📦 IMPORTACIÓN DINÁMICA Y AUTODETECTABLE
 let WebcastPushConnection = null;
 try {
     const tiktokModule = require("tiktok-live-connector");
-    console.log("🔍 [DEBUG] Estructura real de tiktok-live-connector:", tiktokModule);
-
+    
+    // 1. Intentar rutas conocidas
     WebcastPushConnection = 
         tiktokModule.WebcastPushConnection || 
         tiktokModule.default?.WebcastPushConnection || 
-        tiktokModule.default || 
-        (typeof tiktokModule === 'function' ? tiktokModule : null);
+        tiktokModule.default;
 
-    console.log("🔍 [DEBUG] WebcastPushConnection resultante es de tipo:", typeof WebcastPushConnection);
+    // 2. Si no es una función, buscar automáticamente cualquier función/clase dentro del módulo
+    if (typeof WebcastPushConnection !== 'function') {
+        const foundKey = Object.keys(tiktokModule).find(key => typeof tiktokModule[key] === 'function');
+        if (foundKey) {
+            WebcastPushConnection = tiktokModule[foundKey];
+            console.log(`🔍 [AUTO-DETECT] Clase de conexión hallada en la propiedad: "${foundKey}"`);
+        }
+    }
+
+    console.log("🔍 [DEBUG] Tipo final de WebcastPushConnection:", typeof WebcastPushConnection);
 } catch (error) {
-    console.error("❌ Error crítico al requerir tiktok-live-connector:", error.message);
+    console.error("❌ Error crítico al cargar tiktok-live-connector:", error.message);
 }
 
 // ===============================
@@ -142,7 +150,7 @@ io.on("connection", (socket) => {
       }
 
       if (typeof WebcastPushConnection !== 'function') {
-          console.error("❌ WebcastPushConnection sigue sin ser una función. Tipo actual:", typeof WebcastPushConnection);
+          console.error("❌ No se pudo encontrar una función constructora válida para WebcastPushConnection.");
           socket.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Error interno: Módulo TikTok no inicializado', diamondCount: 0 });
           return;
       }
