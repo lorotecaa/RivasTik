@@ -6,15 +6,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
-
-// 📦 IMPORTACIÓN SEGURA TIKTOK CONNECTOR (Compatible con v1 y v2)
-const tiktokModule = require("tiktok-live-connector");
-const WebcastPushConnection = 
-    tiktokModule.WebcastPushConnection || 
-    tiktokModule.default?.WebcastPushConnection || 
-    tiktokModule.default || 
-    tiktokModule;
-
+const { WebcastPushConnection } = require("tiktok-live-connector");
 require("dotenv").config();
 
 // ===============================
@@ -136,7 +128,7 @@ io.on("connection", (socket) => {
 
       console.log(`🎥 Intentando conectar al Live de TikTok: @${username}`);
 
-      // 🛑 CRÍTICO: Unir el socket a la sala del streamer
+      // Unir el socket a la sala del streamer
       socket.join(username);
 
       if (conexionesTikTok[username]) {
