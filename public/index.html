@@ -1,93 +1,241 @@
-// ===============================
-// 📦 SERVIDOR DE SUBASTA TIKTOK LIVE (RENDER)
-// ===============================
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Subasta - Control & Widget</title>
+    <!-- Tailwind CSS para diseño moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cliente Socket.io -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        /* Fondo transparente para el modo Widget / Overlay en OBS */
+        body.widget-mode {
+            background: transparent !important;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased min-h-screen">
 
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
-const path = require("path");
-require("dotenv").config();
+    <!-- Contenedor dinámico según el modo activo -->
+    <div id="app" class="p-6"></div>
 
-const app = express();
-app.use(cors());
+    <script>
+        // Configuración de la conexión Socket.io apuntando a tu servidor en Render
+        const SOCKET_URL = "https://rivastik.onrender.com"; 
+        const socket = io(SOCKET_URL);
 
-// Servir archivos estáticos desde la carpeta 'public' (si deseas desplegar vistas web)
-app.use(express.static(path.join(__dirname, "public")));
+        const urlParams = new URLSearchParams(window.location.search);
+        const isWidget = urlParams.get('mode') === 'widget';
+        const appContainer = document.getElementById('app');
 
-const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+        // Inicializar la vista correspondiente
+        if (isWidget) {
+            document.body.classList.add('widget-mode');
+            renderWidgetView();
+        } else {
+            renderDashboardView();
+        }
 
-const PORT = process.env.PORT || 10000;
+        // ==========================================
+        // VISTA 1: DASHBOARD (3 Columnas + Controles)
+        // ==========================================
+        function renderDashboardView() {
+            appContainer.innerHTML = `
+                <div class="max-w-7xl mx-auto space-y-6">
+                    <!-- Cabecera -->
+                    <header class="flex justify-between items-center bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+                        <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">
+                            🚀 TikTok Subasta - Panel de Control
+                        </h1>
+                        <div class="flex gap-4">
+                            <button onclick="abrirVentanaWidget()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg font-semibold transition shadow">
+                                Abrir Widget OBS
+                            </button>
+                            <button onclick="reiniciarSubasta()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition shadow">
+                                Reiniciar Subasta
+                            </button>
+                        </div>
+                    </header>
 
-io.on("connection", (socket) => {
-    console.log(`🟢 Cliente conectado: ${socket.id}`);
+                    <!-- Layout de 3 Columnas -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Columna 1: Controles y Simulador de Regalos -->
+                        <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 space-y-4">
+                            <h2 class="text-xl font-semibold text-pink-400">⏱️ Control de Tiempo</h2>
+                            <div class="text-center bg-gray-900 p-4 rounded-lg border border-gray-700">
+                                <span id="timer-display" class="text-4xl font-mono font-bold text-yellow-400">02:00</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="iniciarTemporizador()" class="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg font-bold">Iniciar</button>
+                                <button onclick="pausarTemporizador()" class="flex-1 bg-yellow-600 hover:bg-yellow-700 py-2 rounded-lg font-bold">Pausar</button>
+                            </div>
+                            <hr class="border-gray-700">
+                            <h3 class="text-lg font-semibold text-purple-400">🎮 Simular Regalo</h3>
+                            <div class="space-y-2">
+                                <input type="text" id="sim-user" placeholder="Nombre de usuario" class="w-full bg-gray-900 border border-gray-700 p-2 rounded-lg text-sm text-white">
+                                <input type="number" id="sim-amount" placeholder="Valor / Monedas" class="w-full bg-gray-900 border border-gray-700 p-2 rounded-lg text-sm text-white">
+                                <button onclick="enviarSimulacion()" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold text-sm">Enviar Simulación</button>
+                            </div>
+                        </div>
 
-    // Unirse a la sala específica del streamer
-    socket.on("join_room", (data) => {
-        const streamerId = data?.streamerId?.replace("@", "");
-        if (!streamerId) return;
-        
-        socket.join(streamerId);
-        console.log(`📡 Cliente unido a sala: ${streamerId}`);
-    });
+                        <!-- Columna 2: Ranking de Participantes -->
+                        <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 space-y-4 flex flex-col h-[500px]">
+                            <h2 class="text-xl font-semibold text-pink-400">🏆 Ranking en Vivo</h2>
+                            <div id="ranking-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                                <p class="text-gray-400 text-center py-10">Esperando pujas o regalos...</p>
+                            </div>
+                        </div>
 
-    // Iniciar subasta
-    socket.on("iniciar_subasta", (data) => {
-        console.log("🚀 Subasta iniciada desde el Dashboard.");
-        io.emit("subasta_iniciada", data);
-    });
+                        <!-- Columna 3: Historial de Eventos -->
+                        <div class="bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-700 space-y-4 flex flex-col h-[500px]">
+                            <h2 class="text-xl font-semibold text-pink-400">📜 Historial de Regalos</h2>
+                            <div id="event-log" class="flex-1 overflow-y-auto space-y-2 text-xs font-mono pr-1">
+                                <p class="text-gray-400 text-center py-10">Sin eventos recientes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-    // Sincronización de tiempo del temporizador
-    socket.on("sync_time", (time) => {
-        socket.broadcast.emit("update_time", time);
-    });
+        // ==========================================
+        // VISTA 2: WIDGET / OVERLAY TRANSPARENTE
+        // ==========================================
+        function renderWidgetView() {
+            appContainer.innerHTML = `
+                <div class="w-full h-screen flex flex-col justify-between p-4">
+                    <!-- Alerta de Snipe / Ganador -->
+                    <div id="widget-alert" class="hidden transform -translate-y-20 transition-all duration-500 bg-gradient-to-r from-pink-600 to-purple-600 p-4 rounded-xl shadow-2xl text-center border-2 border-white/20">
+                        <h3 class="text-lg font-bold uppercase tracking-wider text-yellow-300">¡Nueva Puja Destacada!</h3>
+                        <p id="alert-text" class="text-2xl font-extrabold mt-1"></p>
+                    </div>
 
-    // Finalizar tiempo regular / iniciar snipe
-    socket.on("finalizar_subasta", () => {
-        console.log("⏹️ Evento de finalización de subasta recibido.");
-        io.emit("finalizar_subasta");
-    });
+                    <!-- Panel lateral flotante de ranking -->
+                    <div class="w-80 bg-gray-900/85 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-2xl space-y-3">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                            <span class="font-bold text-pink-400 text-sm">🔥 Top Subasta</span>
+                            <span id="widget-timer" class="font-mono font-bold text-yellow-400 text-lg">02:00</span>
+                        </div>
+                        <div id="widget-ranking" class="space-y-2 max-h-[350px] overflow-hidden">
+                            <p class="text-gray-400 text-xs text-center py-4">Esperando donaciones...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-    // Activar alerta visual de snipe en widgets
-    socket.on("activar_alerta_snipe_visual", () => {
-        console.log("⚡ Alerta visual de Snipe activada.");
-        io.emit("activar_alerta_snipe_visual");
-    });
+        // ==========================================
+        // COMUNICACIÓN CON ELECTRON Y SOCKETS
+        // ==========================================
+        function abrirVentanaWidget() {
+            if (window.electronAPI && window.electronAPI.abrirWidget) {
+                window.electronAPI.abrirWidget();
+            } else {
+                window.open(window.location.pathname + '?mode=widget', '_blank', 'width=450,height=700');
+            }
+        }
 
-    // Anunciar ganador de la ronda
-    socket.on("anunciar_ganador", (ganador) => {
-        console.log("🏆 Anunciando ganador:", ganador);
-        io.emit("anunciar_ganador", ganador);
-    });
+        socket.on('actualizar-subasta', (data) => {
+            actualizarInterfazRanking(data.participantes || []);
+            if (data.tiempoRestante !== undefined) {
+                actualizarTemporizadorUI(data.tiempoRestante);
+            }
+        });
 
-    // Limpiar listas de participantes
-    socket.on("limpiar_listas", () => {
-        console.log("🧹 Limpiando listas de participantes en clientes.");
-        io.emit("limpiar_listas_clientes");
-    });
+        socket.on('nuevo-regalo', (evento) => {
+            registrarEventoHistorial(evento);
+            mostrarAlertaSnipe(evento);
+        });
 
-    // Recibir regalo desde el Dashboard (TikFinity) y reenviarlo a todos los clientes/widgets
-    socket.on("nuevo_regalo", (gift) => {
-        console.log(`💎 Regalo recibido de [${gift.usuario}]: ${gift.cantidad} 💎 (${gift.regalo})`);
-        io.emit("new_gift", gift);
-    });
+        function reiniciarSubasta() { socket.emit('reiniciar-subasta'); }
+        function iniciarTemporizador() { socket.emit('iniciar-timer'); }
+        function pausarTemporizador() { socket.emit('pausar-timer'); }
 
-    // Sincronización general de participantes
-    socket.on("sync_participantes", (participantes) => {
-        socket.broadcast.emit("sync_participantes", participantes);
-    });
+        function enviarSimulacion() {
+            const user = document.getElementById('sim-user').value || "TestUser";
+            const amount = parseInt(document.getElementById('sim-amount').value) || 10;
+            socket.emit('simular-regalo', { user, amount });
+        }
 
-    socket.on("disconnect", () => {
-        console.log(`🔴 Cliente desconectado: ${socket.id}`);
-    });
-});
+        function actualizarInterfazRanking(participantes) {
+            // Actualizar Dashboard
+            const rankingList = document.getElementById('ranking-list');
+            if (rankingList) {
+                if (participantes.length === 0) {
+                    rankingList.innerHTML = `<p class="text-gray-400 text-center py-10">Esperando pujas o regalos...</p>`;
+                } else {
+                    rankingList.innerHTML = participantes.map((p, index) => `
+                        <div class="flex items-center justify-between bg-gray-900 p-3 rounded-lg border border-gray-700">
+                            <div class="flex items-center gap-3">
+                                <span class="font-bold text-yellow-400">#${index + 1}</span>
+                                <img src="${p.avatar || 'https://via.placeholder.com/40'}" class="w-8 h-8 rounded-full object-cover border border-purple-500">
+                                <div>
+                                    <p class="font-semibold text-sm">${p.user}</p>
+                                    <p class="text-xs text-gray-400">${p.totalDonaciones || p.amount} pts</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
 
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Servidor backend corriendo y listo en el puerto ${PORT}`);
-});
+            // Actualizar Widget de OBS
+            const widgetRanking = document.getElementById('widget-ranking');
+            if (widgetRanking) {
+                if (participantes.length === 0) {
+                    widgetRanking.innerHTML = `<p class="text-gray-400 text-xs text-center py-4">Esperando donaciones...</p>`;
+                } else {
+                    widgetRanking.innerHTML = participantes.slice(0, 5).map((p, index) => `
+                        <div class="flex items-center justify-between bg-gray-800/90 p-2 rounded-lg border border-white/5 text-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-yellow-400 text-xs">#${index + 1}</span>
+                                <span class="font-medium truncate max-w-[120px]">${p.user}</span>
+                            </div>
+                            <span class="font-bold text-pink-400 text-xs">${p.totalDonaciones || p.amount}</span>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        function actualizarTemporizadorUI(segundos) {
+            const mins = Math.floor(segundos / 60).toString().padStart(2, '0');
+            const secs = (segundos % 60).toString().padStart(2, '0');
+            const tiempoFormateado = `${mins}:${secs}`;
+            
+            const timerDisplay = document.getElementById('timer-display');
+            if (timerDisplay) timerDisplay.innerText = tiempoFormateado;
+
+            const widgetTimer = document.getElementById('widget-timer');
+            if (widgetTimer) widgetTimer.innerText = tiempoFormateado;
+        }
+
+        function registrarEventoHistorial(evento) {
+            const eventLog = document.getElementById('event-log');
+            if (eventLog) {
+                const timeStr = new Date().toLocaleTimeString();
+                const item = document.createElement('div');
+                item.className = "bg-gray-900 p-2 rounded border border-gray-700 flex justify-between";
+                item.innerHTML = `<span class="text-pink-300">${evento.user}</span> <span class="text-gray-400">+${evento.amount} (${timeStr})</span>`;
+                eventLog.prepend(item);
+            }
+        }
+
+        function mostrarAlertaSnipe(evento) {
+            const alertBox = document.getElementById('widget-alert');
+            const alertText = document.getElementById('alert-text');
+            if (alertBox && alertText) {
+                alertText.innerHTML = `🔥 <b>${evento.user}</b> envió <b>${evento.amount}</b> monedas!`;
+                alertBox.classList.remove('hidden', '-translate-y-20');
+                alertBox.classList.add('translate-y-0');
+                setTimeout(() => {
+                    alertBox.classList.add('-translate-y-20');
+                    setTimeout(() => alertBox.classList.add('hidden'), 500);
+                }, 4000);
+            }
+        }
+    </script>
+</body>
+</html>
