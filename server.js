@@ -7,18 +7,15 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// 📦 IMPORTACIÓN BLINDADA PARA TIKTOK-LIVE-CONNECTOR
-let WebcastPushConnection;
-try {
-    const tiktokModule = require("tiktok-live-connector");
-    WebcastPushConnection = 
-        tiktokModule.WebcastPushConnection || 
-        tiktokModule.default?.WebcastPushConnection || 
-        tiktokModule.default || 
-        tiktokModule;
-} catch (error) {
-    console.error("❌ Error al cargar tiktok-live-connector:", error.message);
-}
+// 📦 IMPORTACIÓN CORREGIDA PARA TIKTOK-LIVE-CONNECTOR v2.x
+const tiktokModule = require("tiktok-live-connector");
+const WebcastPushConnection = 
+    tiktokModule.WebcastPushConnection || 
+    tiktokModule.default?.WebcastPushConnection || 
+    tiktokModule.default || 
+    tiktokModule;
+
+console.log("🔍 Tipo de WebcastPushConnection cargado:", typeof WebcastPushConnection);
 
 require("dotenv").config();
 
@@ -139,7 +136,7 @@ io.on("connection", (socket) => {
       }
 
       if (typeof WebcastPushConnection !== 'function') {
-          console.error("❌ WebcastPushConnection no está disponible como constructor.");
+          console.error("❌ WebcastPushConnection no es una función constructora válida.");
           socket.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Error interno: Módulo TikTok no inicializado', diamondCount: 0 });
           return;
       }
