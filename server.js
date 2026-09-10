@@ -6,18 +6,24 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
-
-// 📦 IMPORTACIÓN CORREGIDA PARA TIKTOK-LIVE-CONNECTOR v2.x
-const tiktokModule = require("tiktok-live-connector");
-const WebcastPushConnection = 
-    tiktokModule.WebcastPushConnection || 
-    tiktokModule.default?.WebcastPushConnection || 
-    tiktokModule.default || 
-    tiktokModule;
-
-console.log("🔍 Tipo de WebcastPushConnection cargado:", typeof WebcastPushConnection);
-
 require("dotenv").config();
+
+// 📦 IMPORTACIÓN CON DEPURACIÓN Y SELECCIÓN MÚLTIPLE
+let WebcastPushConnection = null;
+try {
+    const tiktokModule = require("tiktok-live-connector");
+    console.log("🔍 [DEBUG] Estructura real de tiktok-live-connector:", tiktokModule);
+
+    WebcastPushConnection = 
+        tiktokModule.WebcastPushConnection || 
+        tiktokModule.default?.WebcastPushConnection || 
+        tiktokModule.default || 
+        (typeof tiktokModule === 'function' ? tiktokModule : null);
+
+    console.log("🔍 [DEBUG] WebcastPushConnection resultante es de tipo:", typeof WebcastPushConnection);
+} catch (error) {
+    console.error("❌ Error crítico al requerir tiktok-live-connector:", error.message);
+}
 
 // ===============================
 // 🌐 CONFIGURACIÓN EXPRESS
@@ -136,7 +142,7 @@ io.on("connection", (socket) => {
       }
 
       if (typeof WebcastPushConnection !== 'function') {
-          console.error("❌ WebcastPushConnection no es una función constructora válida.");
+          console.error("❌ WebcastPushConnection sigue sin ser una función. Tipo actual:", typeof WebcastPushConnection);
           socket.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Error interno: Módulo TikTok no inicializado', diamondCount: 0 });
           return;
       }
