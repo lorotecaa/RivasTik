@@ -8,17 +8,30 @@ const { Server } = require("socket.io");
 const path = require("path");
 require("dotenv").config();
 
-// 📦 IMPORTACIÓN SEGURA PARA v2.x
+// 📦 IMPORTACIÓN ANALIZADORA PARA TIKTOK-LIVE-CONNECTOR
 let WebcastPushConnection = null;
 try {
     const tiktokModule = require("tiktok-live-connector");
-    WebcastPushConnection = 
-        tiktokModule.WebcastPushConnection || 
-        tiktokModule.default?.WebcastPushConnection || 
-        tiktokModule.default || 
-        tiktokModule;
+    console.log("📦 Claves disponibles en tiktok-live-connector:", Object.keys(tiktokModule));
+
+    if (typeof tiktokModule === 'function') {
+        WebcastPushConnection = tiktokModule;
+    } else if (tiktokModule.WebcastPushConnection && typeof tiktokModule.WebcastPushConnection === 'function') {
+        WebcastPushConnection = tiktokModule.WebcastPushConnection;
+    } else if (tiktokModule.default && typeof tiktokModule.default === 'function') {
+        WebcastPushConnection = tiktokModule.default;
+    } else if (tiktokModule.default && typeof tiktokModule.default.WebcastPushConnection === 'function') {
+        WebcastPushConnection = tiktokModule.default.WebcastPushConnection;
+    } else {
+        const foundKey = Object.keys(tiktokModule).find(k => typeof tiktokModule[k] === 'function');
+        if (foundKey) {
+            WebcastPushConnection = tiktokModule[foundKey];
+        }
+    }
+
+    console.log("🔍 Tipo final asignado a WebcastPushConnection:", typeof WebcastPushConnection);
 } catch (error) {
-    console.error("❌ Error al cargar tiktok-live-connector:", error.message);
+    console.error("❌ Error crítico al cargar tiktok-live-connector:", error.message);
 }
 
 // ===============================
@@ -138,7 +151,7 @@ io.on("connection", (socket) => {
       }
 
       if (typeof WebcastPushConnection !== 'function') {
-          console.error("❌ WebcastPushConnection no es una función válida.");
+          console.error("❌ WebcastPushConnection no es una función válida. Tipo:", typeof WebcastPushConnection);
           socket.emit('new_gift', { nickname: 'SISTEMA', giftName: '❌ Error interno: Módulo TikTok no inicializado', diamondCount: 0 });
           return;
       }
@@ -160,13 +173,12 @@ io.on("connection", (socket) => {
       });
 
       try {
-          // Detectar método de conexión compatible con la versión instalada
           if (typeof tiktokConn.connect === 'function') {
               await tiktokConn.connect();
           } else if (typeof tiktokConn.start === 'function') {
               await tiktokConn.start();
           } else {
-              throw new Error("No se encontró un método de inicio válido en la conexión.");
+              throw new Error("No se encontró un método de inicio en la conexión.");
           }
 
           console.log(`✅ ¡Conectado con éxito al Live de @${username}!`);
