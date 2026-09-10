@@ -6,7 +6,15 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
-const { WebcastPushConnection } = require("tiktok-live-connector");
+
+// 📦 IMPORTACIÓN SEGURA TIKTOK CONNECTOR (Compatible con v1 y v2)
+const tiktokModule = require("tiktok-live-connector");
+const WebcastPushConnection = 
+    tiktokModule.WebcastPushConnection || 
+    tiktokModule.default?.WebcastPushConnection || 
+    tiktokModule.default || 
+    tiktokModule;
+
 require("dotenv").config();
 
 // ===============================
