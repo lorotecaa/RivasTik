@@ -6,7 +6,7 @@ require("dotenv").config();
 
 
 // ============================================================
-// TIKTOK LIVE CONNECTOR[cite: 1]
+// TIKTOK LIVE CONNECTOR (BÚSQUEDA MULTINIVEL BLINDADA)
 // ============================================================
 
 let WebcastPushConnection = null;
@@ -19,15 +19,32 @@ try {
         Object.keys(tiktokModule)
     );
 
-    if (
-        tiktokModule.WebcastPushConnection &&
-        typeof tiktokModule.WebcastPushConnection === "function"
-    ) {
-        WebcastPushConnection = tiktokModule.WebcastPushConnection;
+    // Búsqueda exhaustiva para v2.x en CommonJS
+    WebcastPushConnection = 
+        tiktokModule.WebcastPushConnection || 
+        tiktokModule.default?.WebcastPushConnection || 
+        tiktokModule.default || 
+        tiktokModule;
+
+    // Si aún no es una función, buscar la primera función disponible en el módulo
+    if (typeof WebcastPushConnection !== "function") {
+        const foundKey = Object.keys(tiktokModule).find(
+            (k) => typeof tiktokModule[k] === "function"
+        );
+        if (foundKey) {
+            WebcastPushConnection = tiktokModule[foundKey];
+        } else if (tiktokModule.default && typeof tiktokModule.default === "object") {
+            const defaultKey = Object.keys(tiktokModule.default).find(
+                (k) => typeof tiktokModule.default[k] === "function"
+            );
+            if (defaultKey) {
+                WebcastPushConnection = tiktokModule.default[defaultKey];
+            }
+        }
     }
 
     console.log(
-        "🔍 WebcastPushConnection:",
+        "🔍 WebcastPushConnection tipo final:",
         typeof WebcastPushConnection
     );
 
@@ -40,7 +57,7 @@ try {
 
 
 // ============================================================
-// EXPRESS + SOCKET.IO[cite: 1]
+// EXPRESS + SOCKET.IO
 // ============================================================
 
 const app = express();
