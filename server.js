@@ -48,7 +48,7 @@ try {
 
 
 // ============================================================
-// EXPRESS + SOCKET.IO
+// EXPRESS + SOCKET.IO[cite: 1]
 // ============================================================
 
 const app = express();
@@ -501,24 +501,26 @@ io.on("connection", (socket) => {
                 return;
             }
 
-            // AUTO-DETECCIÓN DINÁMICA DEL MÉTODO DE CONEXIÓN
+            // INSPECCIÓN Y DETECCIÓN PROFUNDA DE MÉTODOS (INSTANCIA Y PROTOTIPO)
             try {
-                const prototypeMethods = Object.getOwnPropertyNames(
-                    Object.getPrototypeOf(tiktokConn)
-                );
-                console.log("🛠️ Métodos disponibles en tiktokConn:", prototypeMethods);
+                const instanceProps = Object.getOwnPropertyNames(tiktokConn);
+                const protoProps = Object.getOwnPropertyNames(Object.getPrototypeOf(tiktokConn));
+                const allProps = [...new Set([...instanceProps, ...protoProps])];
+                
+                console.log("🛠️ Propiedades y métodos hallados en la conexión:", allProps);
 
-                // Buscar cualquier método que sirva para iniciar (connect, start, run, open, etc.)
-                const validMethodName = prototypeMethods.find(method => 
-                    typeof tiktokConn[method] === 'function' && 
-                    (/connect|start|run|open/i).test(method)
+                const validMethodName = allProps.find(prop => 
+                    typeof tiktokConn[prop] === 'function' && 
+                    (/connect|start|run|open|init|listen/i).test(prop)
                 );
 
                 if (validMethodName) {
-                    console.log(`🚀 Usando método detectado automáticamente: .${validMethodName}()`);
+                    console.log(`🚀 Usando método de inicio detectado: .${validMethodName}()`);
                     await tiktokConn[validMethodName]();
+                } else if (typeof tiktokConn === 'function') {
+                    await tiktokConn();
                 } else {
-                    throw new Error("No se encontró ningún método de inicio compatible en la instancia.");
+                    throw new Error("No se encontró ningún método de inicio compatible.");
                 }
 
                 console.log(
@@ -623,7 +625,7 @@ server.listen(
     "0.0.0.0",
     () => {
         console.log(
-            `🚀 Servidor corriendo en puerto ${PORT}`
+            `🚀 Servidor corriendo en puerto `${PORT}`
         );
         console.log(
             `🎵 TikTok Connector: ${
