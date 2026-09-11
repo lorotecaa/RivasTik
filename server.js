@@ -48,7 +48,7 @@ try {
 
 
 // ============================================================
-// EXPRESS + SOCKET.IO[cite: 1]
+// EXPRESS + SOCKET.IO
 // ============================================================
 
 const app = express();
@@ -501,26 +501,29 @@ io.on("connection", (socket) => {
                 return;
             }
 
-            // INSPECCIÓN Y DETECCIÓN PROFUNDA DE MÉTODOS (INSTANCIA Y PROTOTIPO)
+            // DETECCIÓN DE MÉTODO DE INICIO COMPATIBLE PARA v2.x
             try {
-                const instanceProps = Object.getOwnPropertyNames(tiktokConn);
-                const protoProps = Object.getOwnPropertyNames(Object.getPrototypeOf(tiktokConn));
-                const allProps = [...new Set([...instanceProps, ...protoProps])];
-                
-                console.log("🛠️ Propiedades y métodos hallados en la conexión:", allProps);
-
-                const validMethodName = allProps.find(prop => 
-                    typeof tiktokConn[prop] === 'function' && 
-                    (/connect|start|run|open|init|listen/i).test(prop)
-                );
-
-                if (validMethodName) {
-                    console.log(`🚀 Usando método de inicio detectado: .${validMethodName}()`);
-                    await tiktokConn[validMethodName]();
-                } else if (typeof tiktokConn === 'function') {
-                    await tiktokConn();
+                if (typeof tiktokConn.connect === "function") {
+                    await tiktokConn.connect();
+                } else if (typeof tiktokConn.start === "function") {
+                    await tiktokConn.start();
+                } else if (typeof tiktokConn.run === "function") {
+                    await tiktokConn.run();
                 } else {
-                    throw new Error("No se encontró ningún método de inicio compatible.");
+                    const instanceProps = Object.getOwnPropertyNames(tiktokConn);
+                    const protoProps = Object.getOwnPropertyNames(Object.getPrototypeOf(tiktokConn));
+                    const allProps = [...new Set([...instanceProps, ...protoProps])];
+                    
+                    const validMethodName = allProps.find(prop => 
+                        typeof tiktokConn[prop] === 'function' && 
+                        (/connect|start|run|open|init|listen/i).test(prop)
+                    );
+
+                    if (validMethodName) {
+                        await tiktokConn[validMethodName]();
+                    } else {
+                        throw new Error("No se encontró ningún método de inicio compatible.");
+                    }
                 }
 
                 console.log(
@@ -625,7 +628,7 @@ server.listen(
     "0.0.0.0",
     () => {
         console.log(
-            `🚀 Servidor corriendo en puerto `${PORT}`
+            `🚀 Servidor corriendo en puerto ${PORT}`
         );
         console.log(
             `🎵 TikTok Connector: ${
