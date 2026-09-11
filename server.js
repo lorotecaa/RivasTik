@@ -6,7 +6,7 @@ require("dotenv").config();
 
 
 // ============================================================
-// TIKTOK LIVE CONNECTOR (BÚSQUEDA MULTINIVEL BLINDADA)
+// TIKTOK LIVE CONNECTOR
 // ============================================================
 
 let WebcastPushConnection = null;
@@ -19,27 +19,18 @@ try {
         Object.keys(tiktokModule)
     );
 
-    // Búsqueda exhaustiva para v2.x en CommonJS
     WebcastPushConnection = 
         tiktokModule.WebcastPushConnection || 
         tiktokModule.default?.WebcastPushConnection || 
         tiktokModule.default || 
         tiktokModule;
 
-    // Si aún no es una función, buscar la primera función disponible en el módulo
     if (typeof WebcastPushConnection !== "function") {
         const foundKey = Object.keys(tiktokModule).find(
             (k) => typeof tiktokModule[k] === "function"
         );
         if (foundKey) {
             WebcastPushConnection = tiktokModule[foundKey];
-        } else if (tiktokModule.default && typeof tiktokModule.default === "object") {
-            const defaultKey = Object.keys(tiktokModule.default).find(
-                (k) => typeof tiktokModule.default[k] === "function"
-            );
-            if (defaultKey) {
-                WebcastPushConnection = tiktokModule.default[defaultKey];
-            }
         }
     }
 
@@ -321,10 +312,6 @@ io.on("connection", (socket) => {
         socket.id
     );
 
-    // ========================================================
-    // CONECTAR SISTEMA COMPLETO (SERVERTAP + TIKTOK)
-    // ========================================================
-
     socket.on(
         "conectar-sistema",
         async (data) => {
@@ -514,21 +501,24 @@ io.on("connection", (socket) => {
                 return;
             }
 
+            // AUTO-DETECCIÓN DINÁMICA DEL MÉTODO DE CONEXIÓN
             try {
-                if (
-                    typeof tiktokConn.connect ===
-                    "function"
-                ) {
-                    await tiktokConn.connect();
-                } else if (
-                    typeof tiktokConn.start ===
-                    "function"
-                ) {
-                    await tiktokConn.start();
+                const prototypeMethods = Object.getOwnPropertyNames(
+                    Object.getPrototypeOf(tiktokConn)
+                );
+                console.log("🛠️ Métodos disponibles en tiktokConn:", prototypeMethods);
+
+                // Buscar cualquier método que sirva para iniciar (connect, start, run, open, etc.)
+                const validMethodName = prototypeMethods.find(method => 
+                    typeof tiktokConn[method] === 'function' && 
+                    (/connect|start|run|open/i).test(method)
+                );
+
+                if (validMethodName) {
+                    console.log(`🚀 Usando método detectado automáticamente: .${validMethodName}()`);
+                    await tiktokConn[validMethodName]();
                 } else {
-                    throw new Error(
-                        "Método de conexión de TikTok no compatible."
-                    );
+                    throw new Error("No se encontró ningún método de inicio compatible en la instancia.");
                 }
 
                 console.log(
