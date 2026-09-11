@@ -6,7 +6,7 @@ require("dotenv").config();
 
 
 // ============================================================
-// TIKTOK LIVE CONNECTOR
+// TIKTOK LIVE CONNECTOR[cite: 1]
 // ============================================================
 
 let WebcastPushConnection = null;
@@ -48,7 +48,7 @@ try {
 
 
 // ============================================================
-// EXPRESS + SOCKET.IO
+// EXPRESS + SOCKET.IO[cite: 1]
 // ============================================================
 
 const app = express();
@@ -101,7 +101,6 @@ let participantes = {};
 // ============================================================
 
 const normalizeGiftName = (name) => {
-
     if (!name) return "";
 
     return name
@@ -117,7 +116,6 @@ const normalizeGiftName = (name) => {
 // ============================================================
 
 const highValueGiftMap = {
-
     "HeartMe": 1,
     "Rose": 1,
 
@@ -151,11 +149,8 @@ function configurarEventosTikTok(
     streamerId,
     io
 ) {
-
     tiktokConn.on("gift", (data) => {
-
         try {
-
             console.log("🎁 REGALO RECIBIDO:", {
                 usuario: data.uniqueId,
                 regalo: data.giftName,
@@ -258,7 +253,6 @@ function configurarEventosTikTok(
                 error
             );
         }
-
     });
 
     tiktokConn.on("chat", (data) => {
@@ -266,17 +260,12 @@ function configurarEventosTikTok(
             io.to(streamerId).emit(
                 "new_chat",
                 {
-                    user:
-                        data.uniqueId,
-                    comment:
-                        data.comment
+                    user: data.uniqueId,
+                    comment: data.comment
                 }
             );
         } catch (error) {
-            console.error(
-                "❌ Error procesando chat:",
-                error
-            );
+            console.error("❌ Error procesando chat:", error);
         }
     });
 
@@ -285,17 +274,12 @@ function configurarEventosTikTok(
             io.to(streamerId).emit(
                 "new_like",
                 {
-                    user:
-                        data.uniqueId,
-                    likeCount:
-                        data.likeCount
+                    user: data.uniqueId,
+                    likeCount: data.likeCount
                 }
             );
         } catch (error) {
-            console.error(
-                "❌ Error procesando like:",
-                error
-            );
+            console.error("❌ Error procesando like:", error);
         }
     });
 }
@@ -306,16 +290,11 @@ function configurarEventosTikTok(
 // ============================================================
 
 io.on("connection", (socket) => {
-
-    console.log(
-        "🟢 Cliente conectado:",
-        socket.id
-    );
+    console.log("🟢 Cliente conectado:", socket.id);
 
     socket.on(
         "conectar-sistema",
         async (data) => {
-
             const {
                 ip,
                 port,
@@ -334,13 +313,16 @@ io.on("connection", (socket) => {
                     "new_gift",
                     {
                         nickname: "SISTEMA",
-                        giftName:
-                            "⚠️ Faltan datos: Completa ServerTap y el Usuario de TikTok",
+                        giftName: "⚠️ Faltan datos: Completa ServerTap y el Usuario de TikTok",
                         diamondCount: 0
                     }
                 );
                 return;
             }
+
+            // LIMPIAR PARTICIPANTES AL INICIAR NUEVO SISTEMA (Evita acumulación de sesiones previas)
+            participantes = {};
+            io.emit("update_participantes", participantes);
 
             const targetUrl =
                 `http://${ip}:${port}/v1/server`;
@@ -429,8 +411,7 @@ io.on("connection", (socket) => {
                     "new_gift",
                     {
                         nickname: "SISTEMA",
-                        giftName:
-                            "❌ Error: WebcastPushConnection no está disponible en el servidor",
+                        giftName: "❌ Error: WebcastPushConnection no está disponible en el servidor",
                         diamondCount: 0
                     }
                 );
@@ -491,10 +472,8 @@ io.on("connection", (socket) => {
                 socket.emit(
                     "new_gift",
                     {
-                        nickname:
-                            "SISTEMA",
-                        giftName:
-                            `🔴 Error creando conexión TikTok: ${error.message}`,
+                        nickname: "SISTEMA",
+                        giftName: `🔴 Error creando conexión TikTok: ${error.message}`,
                         diamondCount: 0
                     }
                 );
@@ -543,10 +522,8 @@ io.on("connection", (socket) => {
                 io.to(username).emit(
                     "new_gift",
                     {
-                        nickname:
-                            "SISTEMA",
-                        giftName:
-                            `🟢 Sistema Sincronizado: ServerTap OK & Live @${username} Activo`,
+                        nickname: "SISTEMA",
+                        giftName: `🟢 Sistema Sincronizado: ServerTap OK & Live @${username} Activo`,
                         diamondCount: 0
                     }
                 );
@@ -559,15 +536,12 @@ io.on("connection", (socket) => {
                 socket.emit(
                     "new_gift",
                     {
-                        nickname:
-                            "SISTEMA",
-                        giftName:
-                            `🔴 ServerTap OK, pero error en TikTok (@${username}): ${err.message}`,
+                        nickname: "SISTEMA",
+                        giftName: `🔴 ServerTap OK, pero error en TikTok (@${username}): ${err.message}`,
                         diamondCount: 0
                     }
                 );
             }
-
         }
     );
 
