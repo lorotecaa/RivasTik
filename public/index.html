@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>TikTok & ServerTap Panel</title>
+    <title>TikTok & ServerTap Panel Unificado</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -28,47 +28,43 @@
         }
 
         #controles-group { 
-            width: 350px; 
+            width: 380px; 
             margin: 20px; 
             display: inline-block; 
             vertical-align: top; 
         }
 
-        /* CAJA MORADA: TIKTOK Y CONTROLES */
-        #controles { 
-            background: #8e44ad; 
-            padding: 20px; 
-            border-radius: 10px; 
-            margin-bottom: 20px; 
-            text-align: left;
-        }
-        #controles h2 { font-size: 18px; margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;}
-        #controles input { width: 90%; padding: 10px; border-radius: 5px; border: 1px solid #555; background-color: #333; color: #fff; box-sizing: border-box; display: block; margin: 0 auto 15px auto; }
-        #controles label { display: block; margin-bottom: 5px; font-weight: bold; color: white; margin-left: 5%; font-size: 14px; }
-        #controles button { margin: 5px auto; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; display: block; width: 90%; }
-        
-        .btn-tiktok { background: #2ecc71; color: white; }
-        .btn-tiktok:hover { background: #27ae60; }
-        .btn-simular { background: #007bff; color: white; margin-top: 15px !important; }
-
-        /* CAJA VERDE: SERVERTAP */
-        #servertap-config { 
+        /* CAJA UNIFICADA: SISTEMA */
+        #sistema-config { 
             background: #16a085; 
             padding: 20px; 
             border-radius: 10px; 
             margin-bottom: 20px; 
             text-align: left;
         }
-        #servertap-config h2 { font-size: 18px; margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;}
-        #servertap-config input { width: 90%; padding: 10px; border-radius: 5px; border: 1px solid #555; background-color: #333; color: #fff; box-sizing: border-box; display: block; margin: 0 auto 15px auto; }
-        #servertap-config label { display: block; margin-bottom: 5px; font-weight: bold; color: white; margin-left: 5%; font-size: 14px; }
-        #servertap-config button { background-color: #27ae60; color: white; width: 90%; font-weight: bold; margin: 0 auto; display: block; padding: 12px; border: none; border-radius: 5px; cursor: pointer; }
+        #sistema-config h2 { font-size: 18px; margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;}
+        #sistema-config input { width: 90%; padding: 10px; border-radius: 5px; border: 1px solid #555; background-color: #333; color: #fff; box-sizing: border-box; display: block; margin: 0 auto 15px auto; }
+        #sistema-config label { display: block; margin-bottom: 5px; font-weight: bold; color: white; margin-left: 5%; font-size: 14px; }
+        #sistema-config button { background-color: #27ae60; color: white; width: 90%; font-weight: bold; margin: 0 auto; display: block; padding: 12px; border: none; border-radius: 5px; cursor: pointer; }
+        #sistema-config button:hover { background-color: #219653; }
+
+        /* CAJA SIMULADOR */
+        #simulador-box {
+            background: #8e44ad;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+        }
+        #simulador-box h2 { font-size: 18px; margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;}
+        #simulador-box input { width: 90%; padding: 10px; border-radius: 5px; border: 1px solid #555; background-color: #333; color: #fff; box-sizing: border-box; display: block; margin: 0 auto 15px auto; }
+        #simulador-box label { display: block; margin-bottom: 5px; font-weight: bold; color: white; margin-left: 5%; font-size: 14px; }
+        .btn-simular { background: #007bff; color: white; width: 90%; font-weight: bold; margin: 0 auto; display: block; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
 
         /* TABLA DE PARTICIPANTES / RANKING */
         #participantes-panel {
             background: #27ae60;
             width: 350px;
-            height: 400px;
+            height: 520px;
             margin: 20px;
             border-radius: 10px;
             display: flex;
@@ -87,7 +83,7 @@
             background: #222; 
             color: #ccc; 
             width: 450px; 
-            height: 480px; 
+            height: 520px; 
             overflow-y: auto; 
             margin: 20px; 
             padding: 20px; 
@@ -100,7 +96,7 @@
         .log-item { padding: 6px 0; border-bottom: 1px solid #333; font-size: 13px; display: flex; align-items: center; gap: 10px; }
         .log-item img { width: 25px; height: 25px; border-radius: 50%; }
 
-        /* MODAL DE ÉXITO SERVERTAP */
+        /* MODAL DE ÉXITO */
         #servertap-modal { 
             display: none; 
             position: fixed; 
@@ -125,35 +121,38 @@
 <body>
     
     <div id="main-container">
-        <h1>⚡ Panel de Interacción TikTok & ServerTap ⚡</h1>
+        <h1>⚡ Panel Unificado TikTok & ServerTap ⚡</h1>
         
-        <!-- COLUMNA IZQUIERDA: CONTROLES -->
+        <!-- COLUMNA IZQUIERDA: CONFIGURACIÓN UNIFICADA -->
         <div id="controles-group">
-            <div id="controles">
-                <h2>📱 Conexión TikTok</h2>
+            <div id="sistema-config">
+                <h2>🔌 Conexión del Sistema</h2>
+                
                 <label>Usuario de TikTok (sin @):</label>
-                <input id="tiktokUser" placeholder="Ej: felipe_rivas">
-                <button class="btn-tiktok" onclick="conectarTikTok()">Conectar al Live</button>
-                
-                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
-                
-                <h2>🎮 Simular Regalo (Test)</h2>
-                <input id="sim-user" placeholder="Usuario (Ej: TestUser)">
-                <input type="number" id="sim-amount" placeholder="Diamantes (Ej: 100)">
-                <button class="btn-simular" onclick="simularRegalo()">Enviar Simulación</button>
-            </div>
+                <input id="tiktokUser" placeholder="Ej: dialisis_oficiall">
 
-            <div id="servertap-config">
-                <h2>🔌 Conexión ServerTap</h2>
                 <label>Player Name (Contexto):</label>
                 <input type="text" id="playerName" value="loroteca">
-                <label>IP del Servidor:</label>
+
+                <label>IP del Servidor Minecraft:</label>
                 <input type="text" id="serverIp" value="45.92.16.146">
+
                 <label>Puerto (ServerTap):</label>
                 <input type="number" id="serverPort" value="19018">
+
                 <label>Password (Auth Key):</label>
                 <input type="password" id="serverPassword" placeholder="Tu contraseña ServerTap">
-                <button onclick="probarConexionServerTap()">Probar Conexión</button>
+
+                <button onclick="conectarSistema()">Conectar Sistema Completo</button>
+            </div>
+
+            <div id="simulador-box">
+                <h2>🎮 Simular Regalo (Test)</h2>
+                <label>Usuario simulado:</label>
+                <input id="sim-user" placeholder="Ej: TestUser">
+                <label>Cantidad diamantes:</label>
+                <input type="number" id="sim-amount" placeholder="Ej: 100">
+                <button class="btn-simular" onclick="simularRegalo()">Enviar Simulación</button>
             </div>
         </div>
 
@@ -174,17 +173,17 @@
             <h2>📝 Consola de Eventos en Vivo</h2>
             <div id="log-content">
                 <div class="log-item" style="color: #2ecc71;">
-                    <span>✅ Sistema listo. Conecta tu Live de TikTok.</span>
+                    <span>✅ Sistema listo. Ingresa tus datos y conéctate.</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL SERVERTAP -->
+    <!-- MODAL DE ÉXITO -->
     <div id="servertap-modal">
         <div class="modal-content">
-            <h3 style="margin-top: 0;">Success</h3>
-            <p style="color: #2ecc71; font-weight: bold;">Connection successfully established!</p>
+            <h3 style="margin-top: 0;">¡Conectado con Éxito!</h3>
+            <p style="color: #2ecc71; font-weight: bold;">ServerTap y TikTok Live sincronizados.</p>
             <p id="modal-server-name" style="color: #ccc;">Server Name: Esperando...</p>
             <p id="modal-server-version" style="color: #ccc;">Server Version: Esperando...</p>
             <div style="text-align: right; margin-top: 20px;">
@@ -196,45 +195,35 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     
     <script>
-        const socket = io(); // Conexión automática con el servidor actual (Render o Local)
+        const socket = io();
         const logContent = document.getElementById('log-content');
         const logContainer = document.getElementById('logDonaciones');
 
-        function conectarTikTok() {
-            const user = document.getElementById('tiktokUser').value.trim();
-            if (!user) {
-                alert("⚠️ Por favor ingresa tu usuario de TikTok.");
-                return;
-            }
-            agregarLog(`⏳ Conectando al Live de @${user}...`, "yellow");
-            socket.emit('conectar-tiktok', { user });
-        }
-
-        function probarConexionServerTap() {
+        function conectarSistema() {
+            const tiktokUser = document.getElementById('tiktokUser').value.trim();
+            const playerName = document.getElementById('playerName').value.trim();
             const ip = document.getElementById('serverIp').value.trim();
             const port = document.getElementById('serverPort').value.trim();
             const password = document.getElementById('serverPassword').value.trim();
-            const playerName = document.getElementById('playerName').value.trim();
 
-            if (!ip || !port || !password) {
-                alert("⚠️ Completa IP, Puerto y Contraseña de ServerTap.");
+            if (!tiktokUser || !ip || !port || !password) {
+                alert("⚠️ Por favor completa el usuario de TikTok, la IP, el puerto y la contraseña de ServerTap.");
                 return;
             }
 
-            agregarLog(`⚡ Probando conexión ServerTap con ${ip}:${port}...`, "orange");
-            socket.emit('probar-servertap', { ip, port, password, playerName });
+            agregarLog(`⏳ Conectando ServerTap y escuchando Live de @${tiktokUser}...`, "yellow");
+            socket.emit('conectar-sistema', { ip, port, password, playerName, tiktokUser });
         }
 
         socket.on('servertap-success', (data) => {
             document.getElementById('modal-server-name').innerText = `Server Name: ${data.serverName || 'Paper/Spigot'}`;
             document.getElementById('modal-server-version').innerText = `Server Version: ${data.version || '1.21.1'}`;
             document.getElementById('servertap-modal').style.display = 'flex';
-            agregarLog(`✅ Conexión con ServerTap establecida. (Minecraft)`, "#2ecc71");
         });
 
         socket.on('servertap-error', (err) => {
-            alert(`❌ Error ServerTap: ${err.message}`);
-            agregarLog(`❌ Fallo de conexión ServerTap: ${err.message}`, "red");
+            alert(`❌ Error: ${err.message}`);
+            agregarLog(`❌ Error: ${err.message}`, "red");
         });
 
         function cerrarModal() {
@@ -247,9 +236,7 @@
             socket.emit('simular-regalo', { user, amount });
         }
 
-        // ==========================================
-        // 🎁 RECEPCIÓN DE REGALOS Y ACTUALIZACIÓN UI
-        // ==========================================
+        // Recepción de regalos y eventos
         socket.on("new_gift", (giftData) => {
             const nickname = giftData.nickname || "Desconocido";
             const giftName = giftData.giftName || "Regalo";
@@ -259,7 +246,7 @@
             if (diamantes === 0 && nickname !== 'SISTEMA') return;
 
             let colorTexto = "cyan";
-            if (nickname === 'SISTEMA') colorTexto = giftName.includes('Error') ? "red" : "#2ecc71";
+            if (nickname === 'SISTEMA') colorTexto = giftName.includes('Error') || giftName.includes('🔴') || giftName.includes('⚠️') ? "red" : "#2ecc71";
 
             const logItem = document.createElement('div');
             logItem.className = 'log-item';
@@ -279,7 +266,7 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         });
 
-        // 👥 Sincronizar y pintar la lista de participantes en tiempo real
+        // Sincronizar lista de participantes / ranking
         socket.on("update_participantes", (participantes) => {
             const participantesArray = Object.values(participantes);
             participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
